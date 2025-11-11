@@ -220,25 +220,26 @@ function Update-ResourceStatus {
 ### Example
 
 ```powershell
-function Show-FileInfo {
-    [CmdletBinding(SupportsShouldProcess)]
+function Remove-CacheFiles {
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
     param(
         [Parameter(Mandatory)]
         [string]$Path
     )
 
     try {
-        $file = Get-Item -Path $Path -ErrorAction Stop
+        $files = Get-ChildItem -Path $Path -Filter "*.cache" -ErrorAction Stop
         
         # Demonstrates WhatIf support - shows what would happen without doing it
-        if ($PSCmdlet.ShouldProcess($Path, 'Display file information')) {
-            Write-Output $file
+        if ($PSCmdlet.ShouldProcess($Path, 'Remove cache files')) {
+            $files | Remove-Item -Force
+            Write-Verbose "Removed $($files.Count) cache files from $Path"
         }
     } catch {
         $errorRecord = [System.Management.Automation.ErrorRecord]::new(
             $_.Exception,
-            'FileNotFound',
-            [System.Management.Automation.ErrorCategory]::ObjectNotFound,
+            'RemovalFailed',
+            [System.Management.Automation.ErrorCategory]::NotSpecified,
             $Path
         )
         $PSCmdlet.WriteError($errorRecord)
