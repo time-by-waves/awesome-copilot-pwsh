@@ -78,7 +78,7 @@ function Get-UserProfile {
 
 - **Switch Parameters:**
   - **ALWAYS** use `[switch]` for boolean flags, never `[bool]`
-  - **NEVER** use `[bool]$Parameter` or parameters with boolean default values
+  - **NEVER** use `[bool]$Parameter` or `[bool]` parameters with default values
   - **NEVER** assign default values to switch parameters (e.g., `[switch]$Force = $false`)
   - Switch parameters automatically default to `$false` when omitted
   - Use clear, action-oriented names for switches
@@ -124,7 +124,7 @@ function Set-ResourceConfiguration {
 # ❌ INCORRECT - Do NOT do this
 function Set-ResourceConfiguration {
     param(
-        [bool]$Force,                    # ❌ Never use [bool] for parameters
+        [bool]$Force, # ❌ Never use [bool] for parameters
         [switch]$Quiet = $false,         # ❌ Never set default values on switches
         [bool]$SkipValidation = $false   # ❌ Use [switch] instead of [bool]
     )
