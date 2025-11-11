@@ -56,8 +56,6 @@ function Get-UserProfile {
 
 ## Parameter Design
 
-**IMPORTANT: Always use `[switch]` for boolean/flag parameters, never `[bool]`. See "Switch Parameters" section below for detailed guidance.**
-
 - **Standard Parameters:**
   - Use common parameter names (`Path`, `Name`, `Force`)
   - Follow built-in cmdlet conventions
@@ -78,14 +76,13 @@ function Get-UserProfile {
 
 - **Switch Parameters:**
   - **ALWAYS** use `[switch]` for boolean flags, never `[bool]`
-  - **NEVER** use `[bool]$Parameter` or `[bool]` parameters with default values
-  - **NEVER** assign default values to switch parameters (e.g., `[switch]$Force = $false`)
-  - Switch parameters automatically default to `$false` when omitted
-  - Use clear, action-oriented names for switches
-  - Test switch presence with `.IsPresent` property when needed
-  - Note: Using `$true`/`$false` in parameter **attributes** (like `Mandatory = $true`) is acceptable
+  - **NEVER** use `[bool]$Parameter` or assign default values
+  - Switch parameters default to `$false` when omitted
+  - Use clear, action-oriented names
+  - Test presence with `.IsPresent` if needed
+  - Using `$true`/`$false` in parameter attributes (e.g., `Mandatory = $true`) is acceptable
 
-### Example (Correct)
+### Example
 
 ```powershell
 function Set-ResourceConfiguration {
@@ -99,10 +96,10 @@ function Set-ResourceConfiguration {
         [string]$Environment = 'Dev',
 
         [Parameter()]
-        [switch]$Force,  # Correct: switch with no default value
+        [switch]$Overwrite,  # Correct: switch with no default value
 
         [Parameter()]
-        [switch]$Quiet,  # Correct: switch automatically defaults to $false
+        [switch]$Quiet = [switch]$true,  # ❌ WRONG: Never assign default values to switches
 
         [Parameter()]
         [ValidateNotNullOrEmpty()]
@@ -111,32 +108,10 @@ function Set-ResourceConfiguration {
 
     process {
         # Use .IsPresent to check switch state if needed
-        if ($Force.IsPresent) {
-            Write-Verbose "Force mode enabled"
+        if ($Overwrite.IsPresent) {
+            Write-Verbose "Overwrite mode enabled"
         }
     }
-}
-```
-
-### Anti-Pattern (Incorrect)
-
-```powershell
-# ❌ INCORRECT - Do NOT do this
-function Set-ResourceConfiguration {
-    param(
-        [bool]$Force, # ❌ Never use [bool] for parameters
-        [switch]$Quiet = $false,         # ❌ Never set default values on switches
-        [bool]$SkipValidation = $false   # ❌ Use [switch] instead of [bool]
-    )
-}
-
-# ✅ CORRECT - Use this instead
-function Set-ResourceConfiguration {
-    param(
-        [switch]$Force,          # ✅ Use [switch] for boolean flags
-        [switch]$Quiet,          # ✅ No default value needed
-        [switch]$SkipValidation  # ✅ Automatically defaults to $false
-    )
 }
 ```
 
@@ -245,66 +220,38 @@ function Update-ResourceStatus {
 ### Example
 
 ```powershell
-function Remove-UserAccount {
-    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
+function Update-Configuration {
+    [CmdletBinding(SupportsShouldProcess = $true)]
     param(
-        [Parameter(Mandatory, ValueFromPipeline)]
-        [ValidateNotNullOrEmpty()]
-        [string]$Username,
-
-        [Parameter()]
-        [switch]$Force
+        [Parameter(Mandatory)]
+        [string]$ConfigPath
     )
 
-    begin {
-        Write-Verbose 'Starting user account removal process'
-        $ErrorActionPreference = 'Stop'
-    }
-
-    process {
-        try {
-            # Validation
-            if (-not (Test-UserExists -Username $Username)) {
-                $errorRecord = [System.Management.Automation.ErrorRecord]::new(
-                    [System.Exception]::new("User account '$Username' not found"),
-                    'UserNotFound',
-                    [System.Management.Automation.ErrorCategory]::ObjectNotFound,
-                    $Username
-                )
-                $PSCmdlet.WriteError($errorRecord)
-                return
-            }
-
-            # Confirmation
-            $shouldProcessMessage = "Remove user account '$Username'"
-            if ($Force -or $PSCmdlet.ShouldProcess($Username, $shouldProcessMessage)) {
-                Write-Verbose "Removing user account: $Username"
-
-                # Main operation
-                Remove-ADUser -Identity $Username -ErrorAction Stop
-                Write-Warning "User account '$Username' has been removed"
-            }
-        } catch [Microsoft.ActiveDirectory.Management.ADException] {
+    try {
+        # Validation
+        if (-not (Test-Path $ConfigPath)) {
             $errorRecord = [System.Management.Automation.ErrorRecord]::new(
-                $_.Exception,
-                'ActiveDirectoryError',
-                [System.Management.Automation.ErrorCategory]::NotSpecified,
-                $Username
+                [System.IO.FileNotFoundException]::new("Config file not found: $ConfigPath"),
+                'ConfigNotFound',
+                [System.Management.Automation.ErrorCategory]::ObjectNotFound,
+                $ConfigPath
             )
-            $PSCmdlet.ThrowTerminatingError($errorRecord)
-        } catch {
-            $errorRecord = [System.Management.Automation.ErrorRecord]::new(
-                $_.Exception,
-                'UnexpectedError',
-                [System.Management.Automation.ErrorCategory]::NotSpecified,
-                $Username
-            )
-            $PSCmdlet.ThrowTerminatingError($errorRecord)
+            $PSCmdlet.WriteError($errorRecord)
+            return
         }
-    }
 
-    end {
-        Write-Verbose 'User account removal process completed'
+        if ($PSCmdlet.ShouldProcess($ConfigPath, 'Update configuration')) {
+            Write-Verbose "Updating configuration: $ConfigPath"
+            # Update logic here
+        }
+    } catch {
+        $errorRecord = [System.Management.Automation.ErrorRecord]::new(
+            $_.Exception,
+            'UpdateFailed',
+            [System.Management.Automation.ErrorCategory]::NotSpecified,
+            $ConfigPath
+        )
+        $PSCmdlet.ThrowTerminatingError($errorRecord)
     }
 }
 ```
@@ -343,47 +290,68 @@ function Remove-UserAccount {
 ## Full Example: End-to-End Cmdlet Pattern
 
 ```powershell
-function New-Resource {
-    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'Medium')]
+function Remove-UserAccount {
+    [CmdletBinding(SupportsShouldProcess = $true, ConfirmImpact = 'High')]
     param(
-        [Parameter(Mandatory = $true,
-            ValueFromPipeline = $true,
-            ValueFromPipelineByPropertyName = $true)]
+        [Parameter(Mandatory, ValueFromPipeline)]
         [ValidateNotNullOrEmpty()]
-        [string]$Name,
+        [string]$Username,
 
         [Parameter()]
-        [ValidateSet('Development', 'Production')]
-        [string]$Environment = 'Development'
+        [switch]$Force
     )
 
     begin {
-        Write-Verbose 'Starting resource creation process'
+        Write-Verbose 'Starting user account removal process'
+        $ErrorActionPreference = 'Stop'
     }
 
     process {
         try {
-            if ($PSCmdlet.ShouldProcess($Name, 'Create new resource')) {
-                # Resource creation logic here
-                Write-Output ([PSCustomObject]@{
-                        Name        = $Name
-                        Environment = $Environment
-                        Created     = Get-Date
-                    })
+            # Validation
+            if (-not (Test-UserExists -Username $Username)) {
+                $errorRecord = [System.Management.Automation.ErrorRecord]::new(
+                    [System.Exception]::new("User account '$Username' not found"),
+                    'UserNotFound',
+                    [System.Management.Automation.ErrorCategory]::ObjectNotFound,
+                    $Username
+                )
+                $PSCmdlet.WriteError($errorRecord)
+                return
             }
+
+            # ShouldProcess with Force parameter
+            if ($PSCmdlet.ShouldProcess($Username, "Remove user account")) {
+                # ShouldContinue for additional confirmation when -Force is not used
+                if ($Force -or $PSCmdlet.ShouldContinue("Are you sure you want to remove '$Username'?", "Confirm Removal")) {
+                    Write-Verbose "Removing user account: $Username"
+                    
+                    # Main operation
+                    Remove-ADUser -Identity $Username -ErrorAction Stop
+                    Write-Warning "User account '$Username' has been removed"
+                }
+            }
+        } catch [Microsoft.ActiveDirectory.Management.ADException] {
+            $errorRecord = [System.Management.Automation.ErrorRecord]::new(
+                $_.Exception,
+                'ActiveDirectoryError',
+                [System.Management.Automation.ErrorCategory]::NotSpecified,
+                $Username
+            )
+            $PSCmdlet.ThrowTerminatingError($errorRecord)
         } catch {
             $errorRecord = [System.Management.Automation.ErrorRecord]::new(
                 $_.Exception,
-                'ResourceCreationFailed',
+                'UnexpectedError',
                 [System.Management.Automation.ErrorCategory]::NotSpecified,
-                $Name
+                $Username
             )
             $PSCmdlet.ThrowTerminatingError($errorRecord)
         }
     }
 
     end {
-        Write-Verbose 'Completed resource creation process'
+        Write-Verbose 'User account removal process completed'
     }
 }
 ```
