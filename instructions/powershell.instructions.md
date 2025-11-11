@@ -56,6 +56,8 @@ function Get-UserProfile {
 
 ## Parameter Design
 
+**IMPORTANT: Always use `[switch]` for boolean/flag parameters, never `[bool]`. See "Switch Parameters" section below for detailed guidance.**
+
 - **Standard Parameters:**
   - Use common parameter names (`Path`, `Name`, `Force`)
   - Follow built-in cmdlet conventions
@@ -75,12 +77,15 @@ function Get-UserProfile {
   - Enable tab completion where possible
 
 - **Switch Parameters:**
-  - Use [switch] for boolean flags
-  - Avoid $true/$false parameters
-  - Default to $false when omitted
-  - Use clear action names
+  - **ALWAYS** use `[switch]` for boolean flags, never `[bool]`
+  - **NEVER** use `[bool]$Parameter` or parameters with boolean default values
+  - **NEVER** assign default values to switch parameters (e.g., `[switch]$Force = $false`)
+  - Switch parameters automatically default to `$false` when omitted
+  - Use clear, action-oriented names for switches
+  - Test switch presence with `.IsPresent` property when needed
+  - Note: Using `$true`/`$false` in parameter **attributes** (like `Mandatory = $true`) is acceptable
 
-### Example
+### Example (Correct)
 
 ```powershell
 function Set-ResourceConfiguration {
@@ -94,7 +99,10 @@ function Set-ResourceConfiguration {
         [string]$Environment = 'Dev',
 
         [Parameter()]
-        [switch]$Force,
+        [switch]$Force,  # Correct: switch with no default value
+
+        [Parameter()]
+        [switch]$Quiet,  # Correct: switch automatically defaults to $false
 
         [Parameter()]
         [ValidateNotNullOrEmpty()]
@@ -102,8 +110,33 @@ function Set-ResourceConfiguration {
     )
 
     process {
-        # Logic here
+        # Use .IsPresent to check switch state if needed
+        if ($Force.IsPresent) {
+            Write-Verbose "Force mode enabled"
+        }
     }
+}
+```
+
+### Anti-Pattern (Incorrect)
+
+```powershell
+# ❌ INCORRECT - Do NOT do this
+function Set-ResourceConfiguration {
+    param(
+        [bool]$Force,                    # ❌ Never use [bool] for parameters
+        [switch]$Quiet = $false,         # ❌ Never set default values on switches
+        [bool]$SkipValidation = $false   # ❌ Use [switch] instead of [bool]
+    )
+}
+
+# ✅ CORRECT - Use this instead
+function Set-ResourceConfiguration {
+    param(
+        [switch]$Force,          # ✅ Use [switch] for boolean flags
+        [switch]$Quiet,          # ✅ No default value needed
+        [switch]$SkipValidation  # ✅ Automatically defaults to $false
+    )
 }
 ```
 
