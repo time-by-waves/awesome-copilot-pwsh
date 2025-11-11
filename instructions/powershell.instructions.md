@@ -244,10 +244,6 @@ function Show-FileInfo {
         $PSCmdlet.WriteError($errorRecord)
     }
 }
-
-# Usage:
-# Show-FileInfo -Path C:\file.txt         # Normal execution
-# Show-FileInfo -Path C:\file.txt -WhatIf # Shows what would happen
 ```
 
 ## Documentation and Style
