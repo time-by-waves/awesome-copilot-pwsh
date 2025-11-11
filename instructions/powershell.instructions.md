@@ -99,7 +99,7 @@ function Set-ResourceConfiguration {
         [switch]$Overwrite,  # Correct: switch with no default value
 
         [Parameter()]
-        [switch]$Quiet = [switch]$true,  # ❌ WRONG: Never assign default values to switches
+        [switch]$Quiet = [switch]$true,  # ❌ WRONG: Never assign defaults (if you must, use [switch]$true not $true)
 
         [Parameter()]
         [ValidateNotNullOrEmpty()]
