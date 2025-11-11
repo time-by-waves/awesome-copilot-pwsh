@@ -99,7 +99,7 @@ function Set-ResourceConfiguration {
         [switch]$Overwrite,  # Correct: switch with no default value
 
         [Parameter()]
-        [switch]$Quiet = [switch]$true,  # ❌ WRONG: Never assign defaults (if you must, use [switch]$true not $true)
+        [switch]$Quiet = [switch]$true,  # ❌ WRONG: Shows incorrect default assignment (correct syntax requires [switch] cast)
 
         [Parameter()]
         [ValidateNotNullOrEmpty()]
@@ -220,40 +220,34 @@ function Update-ResourceStatus {
 ### Example
 
 ```powershell
-function Update-Configuration {
-    [CmdletBinding(SupportsShouldProcess = $true)]
+function Show-Process {
+    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
     param(
         [Parameter(Mandatory)]
-        [string]$ConfigPath
+        [string]$ProcessName
     )
 
     try {
-        # Validation
-        if (-not (Test-Path $ConfigPath)) {
-            $errorRecord = [System.Management.Automation.ErrorRecord]::new(
-                [System.IO.FileNotFoundException]::new("Config file not found: $ConfigPath"),
-                'ConfigNotFound',
-                [System.Management.Automation.ErrorCategory]::ObjectNotFound,
-                $ConfigPath
-            )
-            $PSCmdlet.WriteError($errorRecord)
-            return
-        }
-
-        if ($PSCmdlet.ShouldProcess($ConfigPath, 'Update configuration')) {
-            Write-Verbose "Updating configuration: $ConfigPath"
-            # Update logic here
+        $process = Get-Process -Name $ProcessName -ErrorAction Stop
+        
+        # Demonstrates WhatIf support - shows what would happen without doing it
+        if ($PSCmdlet.ShouldProcess($ProcessName, 'Display process information')) {
+            Write-Output $process
         }
     } catch {
         $errorRecord = [System.Management.Automation.ErrorRecord]::new(
             $_.Exception,
-            'UpdateFailed',
-            [System.Management.Automation.ErrorCategory]::NotSpecified,
-            $ConfigPath
+            'ProcessNotFound',
+            [System.Management.Automation.ErrorCategory]::ObjectNotFound,
+            $ProcessName
         )
-        $PSCmdlet.ThrowTerminatingError($errorRecord)
+        $PSCmdlet.WriteError($errorRecord)
     }
 }
+
+# Usage:
+# Show-Process -ProcessName notepad         # Normal execution
+# Show-Process -ProcessName notepad -WhatIf # Shows what would happen
 ```
 
 ## Documentation and Style
