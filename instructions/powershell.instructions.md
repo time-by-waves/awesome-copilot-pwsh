@@ -220,34 +220,34 @@ function Update-ResourceStatus {
 ### Example
 
 ```powershell
-function Show-Process {
+function Show-FileInfo {
     [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
     param(
         [Parameter(Mandatory)]
-        [string]$ProcessName
+        [string]$Path
     )
 
     try {
-        $process = Get-Process -Name $ProcessName -ErrorAction Stop
+        $file = Get-Item -Path $Path -ErrorAction Stop
         
         # Demonstrates WhatIf support - shows what would happen without doing it
-        if ($PSCmdlet.ShouldProcess($ProcessName, 'Display process information')) {
-            Write-Output $process
+        if ($PSCmdlet.ShouldProcess($Path, 'Display file information')) {
+            Write-Output $file
         }
     } catch {
         $errorRecord = [System.Management.Automation.ErrorRecord]::new(
             $_.Exception,
-            'ProcessNotFound',
+            'FileNotFound',
             [System.Management.Automation.ErrorCategory]::ObjectNotFound,
-            $ProcessName
+            $Path
         )
         $PSCmdlet.WriteError($errorRecord)
     }
 }
 
 # Usage:
-# Show-Process -ProcessName notepad         # Normal execution
-# Show-Process -ProcessName notepad -WhatIf # Shows what would happen
+# Show-FileInfo -Path C:\file.txt         # Normal execution
+# Show-FileInfo -Path C:\file.txt -WhatIf # Shows what would happen
 ```
 
 ## Documentation and Style
