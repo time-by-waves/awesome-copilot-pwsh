@@ -221,7 +221,7 @@ function Update-ResourceStatus {
 
 ```powershell
 function Show-FileInfo {
-    [CmdletBinding(SupportsShouldProcess, ConfirmImpact = 'High')]
+    [CmdletBinding(SupportsShouldProcess)]
     param(
         [Parameter(Mandatory)]
         [string]$Path
